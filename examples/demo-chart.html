@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html ng-app="demo">
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>OnexusJS demo</title>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.15/angular.js"></script>
+    <script src="//code.highcharts.com/highcharts.js"></script>
+
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.css">
+
+    <!-- ui-select files -->
+    <script src="../dist/onexus.js"></script>
+
+    <script>
+
+    angular
+        .module('demo', ['onexus'])
+        .controller('DemoCtrl', function($scope, $http) {
+
+        $scope.demoChart = {
+               chart: {
+                   plotBackgroundColor: null,
+                   plotBorderWidth: null,
+                   plotShadow: false
+               },
+               title: {
+                   text: 'Browser market shares at a specific website, 2010'
+               },
+               tooltip: {
+               pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+               },
+               plotOptions: {
+                   pie: {
+                       allowPointSelect: true,
+                       cursor: 'pointer',
+                       dataLabels: {
+                           enabled: true,
+                           color: '#000000',
+                           connectorColor: '#000000',
+                           format: '<b>{point.name}</b>: {point.percentage:.1f} %'
+                       }
+                   }
+               },
+               series: [{
+                   type: 'pie',
+                   name: 'Browser share',
+                   data: [
+                       ['Firefox',   45.0],
+                       ['IE',       26.8],
+                       {
+                           name: 'Chrome',
+                           y: 12.8,
+                           sliced: true,
+                           selected: true
+                       },
+                       ['Safari',    8.5],
+                       ['Opera',     6.2],
+                       ['Others',   0.7]
+                   ]
+               }]
+            };
+
+    });
+
+    </script>
+</head>
+<body ng-controller="DemoCtrl">
+    <div class="jumbotron">
+        <h1>Highcharts</h1>
+        <div class="container">
+            <chart value="demoChart"></chart>
+        </div>
+    </div>
+</body>
+</html>
