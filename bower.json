@@ -1,0 +1,19 @@
+{
+  "author": "Onexus Team",
+  "name": "onexus",
+  "description": "OnexusJS - Web development for Onexus server",
+  "version": "0.1.0",
+  "homepage": "http://www.github.com/onexus/onexusjs",
+  "main": "./dist/onexus.js",
+  "license": "Apache License 2.0",
+  "ignore": [
+      "**/.*",
+      "node_modules",
+      "bower_components",
+      "src",
+      "test"
+    ],
+  "dependencies": {
+      "angular": "~1.2"
+  }
+}
