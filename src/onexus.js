@@ -2,7 +2,7 @@
 
 var onexus = angular.module('onexus', []);
 
-onexus.directive('chart', function() {
+onexus.directive('onexus.chart', function() {
     return {
         restrict: 'E',
         template: '<div></div>',
@@ -37,15 +37,24 @@ onexus.directive('chart', function() {
 
 });
 
-onexus.service('onexus.selection', function () {
+onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', function ($q, es, collections) {
 
-    var Selection = function() {
-        this.items = [];
+    var Selection = function(config) {
+
+        var items = [];
+
+        this.list = function() {
+            return items;
+        };
+
+        this.add = function(item) {
+            items.push(item);
+        };
 
         this.has = function(type) {
             var i;
-            for (i=0; i < this.items.length; i++) {
-                if (this.items[i].type == type) {
+            for (i=0; i < items.length; i++) {
+                if (items[i].type == type) {
                     return true;
                 }
             }
@@ -53,24 +62,95 @@ onexus.service('onexus.selection', function () {
         };
 
         this.isEmpty = function() {
-            return this.items.length == 0;
+            return items.length == 0;
         };
 
         this.toString = function() {
             var strings = [];
-            angular.forEach(this.items, function(item) {
+            angular.forEach(items, function(item) {
                 strings.push(item.title);
             });
             return strings.join(" & ");
         };
 
-        this.getFilter = function(mainIndex) {
+        this.decode = function (filter) {
+
+            var hashConfig = {};
+            angular.forEach(config, function(e) {
+                hashConfig[e.type] = e;
+            });
+
+            items = [];
+
+            if (filter != null && filter != '') {
+                filter.split('::').forEach(function(type) {
+                    var values = type.split('=');
+                    items.push({ 'type': values[0], 'title': values[1], 'config': hashConfig[values[0]]});
+                });
+            }
+        };
+
+        this.encode = function () {
+
+            var types = [];
+            items.forEach(function(entity) {
+                types.push(entity.type + '=' + entity.title);
+            });
+
+            return types.join('::');
+        };
+
+        this.search = function(value) {
+
+                var result = $q.defer();
+                var request = { body: [] };
+
+                // Build request query
+                angular.forEach(config, function(entity) {
+                    request.body.push({ 'index': collections[entity.collection], 'type': 'entity'});
+                    var conditions = { 'query' : { 'bool': { 'should' : [] }}};
+                    angular.forEach(entity.fields, function(field) {
+                        var obj = {}; obj[field] = value;
+                        conditions.query.bool.should.push({ 'prefix': obj});
+                    });
+                    request.body.push(conditions);
+                });
+
+                console.debug(request);
+
+                es.msearch(request).then(function (resp) {
+
+                        console.debug(resp);
+
+                        var hits = [];
+                        var i;
+                        for (i=0; i < config.length; ++i) {
+                            angular.forEach(resp.responses[i].hits.hits, function(item) {
+                                hits.push({
+                                    'collection': config[i].collection,
+                                    'id': item._id,
+                                    'type': config[i].type,
+                                    'title': item._source[config[i].key]
+                                 });
+                            });
+                        }
+
+                        result.resolve(hits);
+                    }, function (err) {
+                        console.trace(err.message);
+                        result.fail(err.message);
+                    });
+                return result.promise;
+        };
+
+        // PRIVATE METHODS DO NOT USE
+        this._es_filter = function(mainCollection) {
 
             var filter = { bool: { must: [] }};
 
-            angular.forEach(this.items, function(item) {
+            angular.forEach(items, function(item) {
                 var value = {};
-                var field = (item.config.index == mainIndex ? item.config.key : item.config.index + "." + item.config.key);
+                var field = (item.config.collection == mainCollection ? item.config.key : collections[item.config.collection] + "." + item.config.key);
                 value[field] = item.title;
                 filter.bool.must.push({ match: value });
             });
@@ -80,42 +160,42 @@ onexus.service('onexus.selection', function () {
 
     };
 
-    var SelectionService = function() {
+    var OnexusService = function() {
 
-        this.create = function () {
-            return new Selection();
+        this.create = function (config) {
+            return new Selection(config);
         };
 
-        this.decode = function (config, es, filter) {
+        this.query = function(collection, selection) {
 
-            var hashConfig = {};
-            angular.forEach(config, function(e) {
-                hashConfig[e.type] = e;
-            });
+            var result = $q.defer();
+            var indexName = collections[collection];
 
-            var selection = [];
+            var query;
 
-            if (filter != null && filter != '') {
-                filter.split('::').forEach(function(type) {
-                    var values = type.split('=');
-                    selection.push({ 'type': values[0], 'title': values[1], 'config': hashConfig[values[0]]});
-                });
+            if (typeof selection === "undefined") {
+                query = {
+                    index: indexName,
+                    q: '*:*'
+                };
+            } else {
+                query = {
+                  index: indexName,
+                  body: { query: selection._es_filter(indexName) }
+                };
             }
 
-            return selection;
-        };
+            console.debug(query);
 
-        this.encode = function (config, selection) {
-
-            var types = [];
-            selection.forEach(function(entity) {
-                types.push(entity.type + '=' + entity.title);
+            es.search(query).then(function (response) {
+                console.debug(response);
+                result.resolve(response.hits.hits);
             });
 
-            return types.join('::');
+            return result.promise;
         };
     };
 
-    return new SelectionService();
-});
+    return new OnexusService();
+}]);
 
