@@ -111,10 +111,11 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
                 // Build request query
                 angular.forEach(config, function(entity) {
                     request.body.push({ 'index': collections[entity.collection], 'type': 'entity'});
-                    var conditions = { 'query' : { 'bool': { 'should' : [] }}};
-                    angular.forEach(entity.fields, function(field) {
-                        var obj = {}; obj[field] = value;
-                        conditions.query.bool.should.push({ 'prefix': obj});
+                    var conditions = { 'query' : { 'bool': { 'should' : [] }}, from: 0, size: 50 };
+                    angular.forEach(entity.fields, function(field, position) {
+                        var boost = 1 / (position + 1);
+                        var obj = {}; obj[field] = { 'value': value, 'boost': boost };
+                        conditions.query.bool.should.push({ 'prefix': obj });
                     });
                     request.body.push(conditions);
                 });
