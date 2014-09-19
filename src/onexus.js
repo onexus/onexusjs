@@ -88,7 +88,7 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
             if (filter != null && filter != '') {
                 filter.split('::').forEach(function(type) {
                     var values = type.split('=');
-                    items.push({ 'type': values[0], 'title': values[1], 'config': hashConfig[values[0]]});
+                    items.push({ 'type': values[0], 'key': values[1], 'title': values[2], 'config': hashConfig[values[0]]});
                 });
             }
         };
@@ -97,7 +97,7 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
 
             var types = [];
             items.forEach(function(entity) {
-                types.push(entity.type + '=' + entity.title);
+                types.push(entity.type + '=' + entity.key + '=' + entity.title);
             });
 
             return types.join('::');
@@ -114,7 +114,7 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
                     var conditions = { 'query' : { 'bool': { 'should' : [] }}, from: 0, size: 50 };
                     angular.forEach(entity.fields, function(field, position) {
                         var boost = 1 / (position + 1);
-                        var obj = {}; obj[field] = { 'value': value, 'boost': boost };
+                        var obj = {}; obj[field] = { 'value': value.toLowerCase(), 'boost': boost };
                         conditions.query.bool.should.push({ 'prefix': obj });
                     });
                     request.body.push(conditions);
@@ -134,7 +134,8 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
                                     'collection': config[i].collection,
                                     'id': item._id,
                                     'type': config[i].type,
-                                    'title': item._source[config[i].key],
+                                    'title': item._source[config[i].label],
+                                    'key': item._source[config[i].key],
                                     'config': config[i]
                                  });
                             });
@@ -156,7 +157,7 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
             angular.forEach(items, function(item) {
                 var value = {};
                 var field = (item.config.collection == mainCollection ? item.config.key : collections[item.config.collection] + "." + item.config.key);
-                value[field] = item.title;
+                value[field] = item.key;
                 filter.bool.must.push({ match: value });
             });
 
@@ -171,7 +172,7 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
             return new Selection(config);
         };
 
-        this.query = function(collection, selection) {
+        this.query = function(collection, selection, sort) {
 
             var result = $q.defer();
             var indexName = collections[collection];
@@ -188,6 +189,10 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
                   index: indexName,
                   body: { query: selection._es_filter(indexName) }
                 };
+            }
+
+            if (typeof sort !== "undefined") {
+                query.body['sort'] = sort;
             }
 
             console.debug(query);
