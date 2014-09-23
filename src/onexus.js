@@ -93,11 +93,13 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
             }
         };
 
-        this.encode = function () {
+        this.encode = function (exclude) {
 
             var types = [];
             items.forEach(function(entity) {
-                types.push(entity.type + '=' + entity.key + '=' + entity.title);
+                if (exclude == undefined || entity.type != exclude.type || entity.key != exclude.key) {
+                    types.push(entity.type + '=' + entity.key + '=' + entity.title);
+                }
             });
 
             return types.join('::');
