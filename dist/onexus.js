@@ -93,11 +93,13 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
             }
         };
 
-        this.encode = function () {
+        this.encode = function (exclude) {
 
             var types = [];
             items.forEach(function(entity) {
-                types.push(entity.type + '=' + entity.key + '=' + entity.title);
+                if (exclude == undefined || entity.type != exclude.type || entity.key != exclude.key) {
+                    types.push(entity.type + '=' + entity.key + '=' + entity.title);
+                }
             });
 
             return types.join('::');
@@ -156,7 +158,7 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
 
             angular.forEach(items, function(item) {
                 var value = {};
-                var field = (item.config.collection == mainCollection ? item.config.key : collections[item.config.collection] + "." + item.config.key);
+                var field = (collections[item.config.collection] == mainCollection ? item.config.key : collections[item.config.collection] + "." + item.config.key);
                 value[field] = item.key;
                 filter.bool.must.push({ match: value });
             });
