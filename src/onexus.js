@@ -37,6 +37,13 @@ onexus.directive('onexus.chart', function() {
 
 });
 
+// Configure elastic search service
+onexus.service('onexus.es', function (esFactory) {
+     return esFactory({
+       host: window.location.origin + '/es'
+     });
+});
+
 onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', function ($q, es, collections) {
 
     var Selection = function(config) {
@@ -174,22 +181,32 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
             return new Selection(config);
         };
 
-        this.query = function(collection, selection, sort) {
+        this.query = function(collection, selection, sort, size) {
 
             var result = $q.defer();
             var indexName = collections[collection];
 
             var query;
 
+            if (typeof size === "undefined") {
+                size = 1000;
+            }
+
             if (typeof selection === "undefined") {
                 query = {
                     index: indexName,
-                    q: '*:*'
+                    body: {
+                        query: { bool: { must: [{match_all:{}}] } },
+                        size: size
+                    }
                 };
             } else {
                 query = {
-                  index: indexName,
-                  body: { query: selection._es_filter(indexName) }
+                      index: indexName,
+                      body: {
+                            query: selection._es_filter(indexName),
+                            size: size
+                      }
                 };
             }
 
