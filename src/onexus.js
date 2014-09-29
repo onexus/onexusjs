@@ -181,23 +181,24 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
             return new Selection(config);
         };
 
-        this.query = function(collection, selection, sort, size) {
+        this.query = function(collection, selection, params) {
+            var params = typeof params !== "undefined" ? params : {};
+            var total = typeof params.total !== "undefined" ? params.total : false;
+            var size = typeof params.size !== "undefined" ? params.size : (total ? 10 : 1000);
+            var from = typeof params.from !== "undefined" ? params.from : 0;
 
             var result = $q.defer();
             var indexName = collections[collection];
 
             var query;
 
-            if (typeof size === "undefined") {
-                size = 1000;
-            }
-
             if (typeof selection === "undefined") {
                 query = {
                     index: indexName,
                     body: {
                         query: { bool: { must: [{match_all:{}}] } },
-                        size: size
+                        size: size,
+                        from: from
                     }
                 };
             } else {
@@ -205,20 +206,25 @@ onexus.service('onexus.service', [ '$q', 'onexus.es', 'onexus.collections', func
                       index: indexName,
                       body: {
                             query: selection._es_filter(indexName),
-                            size: size
+                            size: size,
+                            from: from
                       }
                 };
             }
 
-            if (typeof sort !== "undefined") {
-                query.body['sort'] = sort;
+            if (typeof params.sort !== "undefined") {
+                query.body['sort'] = params.sort;
             }
 
             console.debug(query);
 
             es.search(query).then(function (response) {
                 console.debug(response);
-                result.resolve(response.hits.hits);
+                if (total) {
+                    result.resolve(response.hits);
+                } else {
+                    result.resolve(response.hits.hits);
+                }
             });
 
             return result.promise;
